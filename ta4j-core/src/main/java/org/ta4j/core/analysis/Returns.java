@@ -135,6 +135,38 @@ public class Returns implements Indicator<Num> {
         return timeSeries.getBarCount() - 1;
     }
 
+//    /**
+//     * Calculates the return time-series during a single trade.
+//     * @param trade a single trade
+//     */
+//    private void calculate(Trade trade) {
+//        final int entryIndex = trade.getEntry().getIndex();
+//        Num minusOne = timeSeries.numOf(-1);
+//        int begin = entryIndex + 1;
+//        if (begin > values.size()) {
+//            // fill returns since last trade with zeroes
+//            values.addAll(Collections.nCopies(begin - values.size(), timeSeries.numOf(0)));
+//        }
+//        // TODO: currentIndex??
+//        int end = determineEndIndex(trade, finalIndex);
+//        int nPeriods = end - entryIndex;
+//        Num totalCost = trade.calculateCost(end, timeSeries.getBar(end).getClosePrice());
+//        Num avgCost = totalCost.dividedBy(totalCost.numOf(nPeriods));
+//
+//        for (int i = Math.max(begin, 1); i <= end; i++) {
+//            // TODO; outsource cost per period to trade
+//            Num adjustedNewPrice = timeSeries.getBar(i).getClosePrice().minus(avgCost);
+//            Num assetReturn = type.calculate(adjustedNewPrice, timeSeries.getBar(i-1).getClosePrice());
+//            Num strategyReturn;
+//            if (trade.getEntry().isBuy()) {
+//                strategyReturn = assetReturn;
+//            } else {
+//                strategyReturn = assetReturn.multipliedBy(minusOne);
+//            }
+//            values.add(strategyReturn);
+//        }
+//    }
+
     /**
      * Calculates the return time-series during a single trade.
      * @param trade a single trade
@@ -147,10 +179,17 @@ public class Returns implements Indicator<Num> {
             // fill returns since last trade with zeroes
             values.addAll(Collections.nCopies(begin - values.size(), timeSeries.numOf(0)));
         }
-        int end = trade.getExit().getIndex();
+
+        int end = (trade.getExit() != null) ? Math.min(trade.getExit().getIndex(), timeSeries.getEndIndex()) : timeSeries.getEndIndex();
+        int nPeriods = end - entryIndex;
+        Num totalCost = trade.calculateCost(end, timeSeries.getBar(end).getClosePrice());
+        Num avgCost = totalCost.dividedBy(totalCost.numOf(nPeriods));
+
+        // spread trading costs equally over trade
         for (int i = Math.max(begin, 1); i <= end; i++) {
-            Num assetReturn = type.calculate(timeSeries.getBar(i).getClosePrice(),
-                    timeSeries.getBar(i-1).getClosePrice());
+            // TODO; outsource cost per period to trade
+            Num adjustedNewPrice = timeSeries.getBar(i).getClosePrice().minus(avgCost);
+            Num assetReturn = type.calculate(adjustedNewPrice, timeSeries.getBar(i-1).getClosePrice());
             Num strategyReturn;
             if (trade.getEntry().isBuy()) {
                 strategyReturn = assetReturn;
