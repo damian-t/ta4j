@@ -215,7 +215,7 @@ public class Trade implements Serializable {
             profit = entry.getPrice().numOf(0);
         }
         else {
-            profit = getProfit(0, null);
+            profit = getProfit(0, exit.getPrice());
         }
         return profit;
     }

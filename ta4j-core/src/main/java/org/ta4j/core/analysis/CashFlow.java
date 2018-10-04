@@ -130,19 +130,22 @@ public class CashFlow implements Indicator<Num> {
             Num lastValue = values.get(values.size() - 1);
             values.addAll(Collections.nCopies(begin - values.size(), lastValue));
         }
-        int startingIndex = Math.max(begin, 1);
-        int nPeriods = endIndex - entryIndex;
-        Num totalCost = trade.calculateCost(endIndex, timeSeries.getBar(endIndex).getClosePrice());
-        Num avgCost = totalCost.dividedBy(totalCost.numOf(nPeriods));
-        for (int i = startingIndex; i <= endIndex; i++) {
-            Num ratio;
-            if (trade.getEntry().isBuy()) {
-                ratio = getAdjustedRatio(entryIndex, i, avgCost);
-            } else {
-                // TODO: WRONG: should be -(ratio-1). Multiplicative setup for short trades flawed
-                ratio = getRatio(i, entryIndex);
+        // Trade is not valid if net balance at the entryIndex is negative
+        if (values.get(values.size() - 1).isGreaterThan(values.get(0).numOf(0))) {
+            int startingIndex = Math.max(begin, 1);
+            int nPeriods = endIndex - entryIndex;
+            Num totalCost = trade.calculateCost(endIndex, timeSeries.getBar(endIndex).getClosePrice());
+            Num avgCost = totalCost.dividedBy(totalCost.numOf(nPeriods));
+            for (int i = startingIndex; i <= endIndex; i++) {
+                Num ratio;
+                if (trade.getEntry().isBuy()) {
+                    ratio = getAdjustedRatio(entryIndex, i, avgCost);
+                } else {
+                    ratio = totalCost.numOf(2).minus(getAdjustedRatio(entryIndex, i, avgCost));
+
+                }
+                values.add(values.get(entryIndex).multipliedBy(ratio));
             }
-            values.add(values.get(entryIndex).multipliedBy(ratio));
         }
     }
 
