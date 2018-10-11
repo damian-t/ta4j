@@ -31,16 +31,35 @@
 		<url>http://github.com/ta4j/ta4j/issues</url>
 	</issueManagement>
 
+	<repositories>
+		<repository>
+			<id>jenkins-repository</id>
+			<url>http://maven.nexus-amana.com/content/repositories/snapshots/</url>
+			<snapshots>
+				<updatePolicy>always</updatePolicy>
+				<enabled>true</enabled>
+			</snapshots>
+			<releases>
+				<updatePolicy>always</updatePolicy>
+			</releases>
+		</repository>
+		<repository>
+			<id>jenkins-repository-release</id>
+			<url>http://maven.nexus-amana.com/content/repositories/releases/</url>
+			<releases>
+				<updatePolicy>always</updatePolicy>
+			</releases>
+		</repository>
+	</repositories>
+
 	<distributionManagement>
 		<snapshotRepository>
-			<id>sonatype-nexus-snapshots</id>
-			<name>Sonatype Nexus snapshot repository</name>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+			<id>amana</id>
+			<url>http://maven.nexus-amana.com/content/repositories/snapshots</url>
 		</snapshotRepository>
 		<repository>
-			<id>sonatype-nexus-staging</id>
-			<name>Sonatype Nexus release repository</name>
-			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+			<id>amana</id>
+			<url>http://maven.nexus-amana.com/content/repositories/releases</url>
 		</repository>
 	</distributionManagement>
 
