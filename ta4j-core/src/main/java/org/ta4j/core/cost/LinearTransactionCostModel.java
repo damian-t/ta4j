@@ -51,11 +51,10 @@ public class LinearTransactionCostModel implements CostModel {
      * Calculates the transaction cost of a trade.
      * @param trade the trade
      * @param currentIndex current bar index (for open trades)
-     * @param currentPrice price of the current bar (for open trades)
      * @return the absolute order cost
      */
-    public Num calculate(Trade trade, int currentIndex, Num currentPrice) {
-        Num totalTradeCost = currentPrice.numOf(0);
+    public Num calculate(Trade trade, int currentIndex) {
+        Num totalTradeCost = trade.getEntry().getPrice().numOf(0);
         Order entryOrder = trade.getEntry();
         if (entryOrder != null) {
             // transaction costs of entry order

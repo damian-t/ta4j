@@ -200,15 +200,16 @@ public class Order implements Serializable {
     }
 
     // TODO: check that same relative fee - amount??
-    public Num getEffectivePrice() {
-        Num effectivePrice;
+    public Num getNetPrice() {
+        Num netPrice;
+        // add transaction costs to the price at the order
         if (type.equals(OrderType.BUY)) {
-            effectivePrice = price.plus(cost);
+            netPrice = price.plus(cost);
         }
         else {
-            effectivePrice = price.minus(cost);
+            netPrice = price.minus(cost);
         }
-        return effectivePrice;
+        return netPrice;
     }
 
     /**

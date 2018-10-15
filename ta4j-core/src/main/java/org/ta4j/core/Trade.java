@@ -249,20 +249,26 @@ public class Trade implements Serializable {
      * @return the cost of the trade
      */
     public Num calculateCost(int finalIndex, Num finalPrice) {
-        Num transactionCost = transactionCostModel.calculate(this, finalIndex, finalPrice);
-        Num borrowingCost = holdingCostModel.calculate(this, finalIndex, finalPrice);
+        Num transactionCost = transactionCostModel.calculate(this, finalIndex);
+        Num borrowingCost = holdingCostModel.calculate(this, finalIndex);
         return transactionCost.plus(borrowingCost);
     }
 
     public Num getNetEntryPrice() {
-        return entry.getEffectivePrice();
+        return entry.getNetPrice();
     }
 
     public Num getNetExitPrice() {
-        return exit.getEffectivePrice();
+        return exit.getNetPrice();
     }
 
-    public Num getBorrowingCost() {
-        return null;
+    public Num getHoldingCost() {
+        // TODO: raise exception
+        assert isClosed();
+        return getHoldingCost(exit.getIndex());
+    }
+
+    public Num getHoldingCost(int finalIndex) {
+        return holdingCostModel.calculate(this, finalIndex);
     }
 }

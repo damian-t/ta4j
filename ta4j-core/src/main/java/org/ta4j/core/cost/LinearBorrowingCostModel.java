@@ -20,7 +20,7 @@ public class LinearBorrowingCostModel implements CostModel {
         this.feePerPeriod = feePerPeriod;
     }
 
-    // TODO: ensure
+    // TODO: ensure, raise Exception
     public Num calculate(Num price, Num amount) {
         return price.numOf(0);
     }
@@ -32,14 +32,10 @@ public class LinearBorrowingCostModel implements CostModel {
      * @param finalPrice price of the final bar to be considered (for open trades)
      * @return the absolute order cost
      */
-    public Num calculate(Trade trade, int finalIndex, Num finalPrice) {
-        return getHoldingCost(trade, finalIndex);
-    }
-
-    private Num getHoldingCost(Trade trade, int currentIndex) {
+    public Num calculate(Trade trade, int currentIndex) {
         Order entryOrder = trade.getEntry();
         Order exitOrder = trade.getExit();
-        Num borrowingCost = trade.getEntry().getAmount().numOf(0);
+        Num borrowingCost = trade.getEntry().getPrice().numOf(0);
 
         if (entryOrder != null && entryOrder.getType().equals(Order.OrderType.SELL) && entryOrder.getAmount() != null) {
             int tradingPeriods = 0;
