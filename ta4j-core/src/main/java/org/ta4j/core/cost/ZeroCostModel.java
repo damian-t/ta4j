@@ -35,4 +35,8 @@ public class ZeroCostModel implements CostModel {
         }
         return equality;
     }
+
+    public Num calculate(Num price, Num amount) {
+        return price.numOf(0);
+    }
 }
