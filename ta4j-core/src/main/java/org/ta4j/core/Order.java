@@ -23,6 +23,8 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import org.ta4j.core.cost.CostModel;
+import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
@@ -83,6 +85,9 @@ public class Order implements Serializable {
     /** The amount to be (or that was) ordered */
     private Num amount;
 
+    /** Cost of executing the order */
+    private Num cost;
+
     /**
      * Constructor.
      * @param index the index the order is executed
@@ -90,24 +95,7 @@ public class Order implements Serializable {
      * @param type the type of the order
      */
     protected Order(int index, TimeSeries series, OrderType type) {
-        this.type = type;
-        this.index = index;
-        this.amount = series.numOf(1);
-        this.price = series.getBar(index).getClosePrice();
-    }
-
-    /**
-     * Constructor.
-     * @param index the index the order is executed
-     * @param type the type of the order
-     * @param price the price for the order
-     * @param amount the amount to be (or that was) ordered
-     */
-    protected Order(int index, OrderType type, Num price, Num amount) {
-        this.type = type;
-        this.index = index;
-        this.price = price;
-        this.amount = amount;
+        this(index, series, type, series.numOf(1));
     }
 
     /**
@@ -118,10 +106,59 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) ordered
      */
     protected Order(int index, TimeSeries series, OrderType type, Num amount) {
+        this(index, series, type, amount, new ZeroCostModel());
+    }
+
+    /**
+     * Constructor.
+     * @param index the index the order is executed
+     * @param series the time series
+     * @param type the type of the order
+     * @param amount the amount to be (or that was) ordered
+     */
+    protected Order(int index, TimeSeries series, OrderType type, Num amount, CostModel transactionCostModel) {
         this.type = type;
         this.index = index;
         this.price = series.getBar(index).getClosePrice();
         this.amount = amount;
+        this.cost = transactionCostModel.calculate(price, amount);
+    }
+
+    /**
+     * Constructor.
+     * @param index the index the order is executed
+     * @param type the type of the order
+     * @param price the price for the order
+     */
+    protected Order(int index, OrderType type, Num price) {
+        this(index, type, price, price.numOf(1));
+    }
+
+    /**
+     * Constructor.
+     * @param index the index the order is executed
+     * @param type the type of the order
+     * @param price the price for the order
+     * @param amount the amount to be (or that was) ordered
+     */
+    protected Order(int index, OrderType type, Num price, Num amount) {
+        this(index, type, price, amount, new ZeroCostModel());
+    }
+
+    /**
+     * Constructor.
+     * @param index the index the order is executed
+     * @param type the type of the order
+     * @param price the price for the order
+     * @param amount the amount to be (or that was) ordered
+     * @param transactionCostModel Cost model for order execution cost
+     */
+    protected Order(int index, OrderType type, Num price, Num amount, CostModel transactionCostModel) {
+        this.type = type;
+        this.index = index;
+        this.price = price;
+        this.amount = amount;
+        this.cost = transactionCostModel.calculate(price, amount);
     }
 
     /**
@@ -130,6 +167,9 @@ public class Order implements Serializable {
     public OrderType getType() {
         return type;
     }
+
+
+    public Num getCost() { return cost; }
 
     /**
      * @return true if this is a BUY order, false otherwise
@@ -157,6 +197,18 @@ public class Order implements Serializable {
      */
     public Num getPrice() {
         return price;
+    }
+
+    // TODO: check that same relative fee - amount??
+    public Num getEffectivePrice() {
+        Num effectivePrice;
+        if (type.equals(OrderType.BUY)) {
+            effectivePrice = price.plus(cost);
+        }
+        else {
+            effectivePrice = price.minus(cost);
+        }
+        return effectivePrice;
     }
 
     /**

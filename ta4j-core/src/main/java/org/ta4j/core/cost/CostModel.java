@@ -16,4 +16,6 @@ public interface CostModel extends Serializable {
      */
 
     Num calculate(Trade trade, int finalIndex, Num finalPrice);
+
+    Num calculate(Num price, Num amount);
 }

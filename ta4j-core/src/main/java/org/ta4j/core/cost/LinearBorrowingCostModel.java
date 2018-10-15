@@ -12,28 +12,17 @@ public class LinearBorrowingCostModel implements CostModel {
     private double feePerPeriod;
 
     /**
-     * Intercept of the linear model - initial fee
-     */
-    private double initialFee;
-
-    /**
      * Constructor.
      * (feePerPeriod * nPeriod)
      * @param feePerPeriod the coefficient (e.g. 0.0001 for 1bp per period)
      */
     public LinearBorrowingCostModel(double feePerPeriod) {
-        this(feePerPeriod, 0);
+        this.feePerPeriod = feePerPeriod;
     }
 
-    /**
-     * Constructor.
-     * (feePerPeriod * nPeriod + initialFee)
-     * @param feePerPeriod the coefficient (e.g. 0.0001 for 1bp per period)
-     * @param initialFee the constant (e.g. 0.2 for $0.2 per {@link Order order})
-     */
-    public LinearBorrowingCostModel(double feePerPeriod, double initialFee) {
-        this.feePerPeriod = feePerPeriod;
-        this.initialFee = initialFee;
+    // TODO: ensure
+    public Num calculate(Num price, Num amount) {
+        return price.numOf(0);
     }
 
     /**
@@ -70,9 +59,8 @@ public class LinearBorrowingCostModel implements CostModel {
      * @return the absolute order cost
      */
     private Num getHoldingCostForPeriods(int tradingPeriods, Num tradedValue) {
-        return tradedValue.numOf(initialFee)
-                .plus(tradedValue
-                        .multipliedBy(tradedValue.numOf(tradingPeriods)
-                                .multipliedBy(tradedValue.numOf(feePerPeriod))));
+        return tradedValue
+                .multipliedBy(tradedValue.numOf(tradingPeriods)
+                        .multipliedBy(tradedValue.numOf(feePerPeriod)));
     }
 }

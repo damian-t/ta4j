@@ -123,6 +123,7 @@ public class CashFlow implements Indicator<Num> {
      * @param finalIndex index up until cash flow of open trades is considered
      */
     private void calculate(Trade trade, int finalIndex) {
+        boolean isLongTrade = trade.getEntry().isBuy();
         int endIndex = determineEndIndex(trade, finalIndex);
         final int entryIndex = trade.getEntry().getIndex();
         int begin = entryIndex + 1;
@@ -133,20 +134,47 @@ public class CashFlow implements Indicator<Num> {
         // Trade is not valid if net balance at the entryIndex is negative
         if (values.get(values.size() - 1).isGreaterThan(values.get(0).numOf(0))) {
             int startingIndex = Math.max(begin, 1);
-            int nPeriods = endIndex - entryIndex;
-            Num totalCost = trade.calculateCost(endIndex, timeSeries.getBar(endIndex).getClosePrice());
-            Num avgCost = totalCost.dividedBy(totalCost.numOf(nPeriods));
-            for (int i = startingIndex; i <= endIndex; i++) {
-                Num ratio;
-                if (trade.getEntry().isBuy()) {
-                    ratio = getAdjustedRatio(entryIndex, i, avgCost);
-                } else {
-                    ratio = totalCost.numOf(2).minus(getAdjustedRatio(entryIndex, i, avgCost));
 
-                }
+            int nPeriods = endIndex - entryIndex;
+
+            Num effectiveEntryPrice = trade.getEntry().getEffectivePrice();
+
+//            Num totalCost = trade.calculateCost(endIndex, timeSeries.getBar(endIndex).getClosePrice());
+//            Num avgCost = totalCost.dividedBy(totalCost.numOf(nPeriods));
+
+            // Add intermediate cashflows during trade
+            for (int i = startingIndex; i < endIndex; i++) {
+                Num intermediatePrice = timeSeries.getBar(i).getClosePrice();
+                Num ratio = getIntermediateRatio(isLongTrade, effectiveEntryPrice, intermediatePrice);
                 values.add(values.get(entryIndex).multipliedBy(ratio));
             }
+
+            // add net cashflow at exit trade
+            Num exitPrice;
+            if (trade.getExit() != null) {
+                exitPrice = trade.getExit().getEffectivePrice();
+            }
+            else {
+                exitPrice = timeSeries.getBar(endIndex).getClosePrice();
+            }
+            Num ratio = getIntermediateRatio(isLongTrade, effectiveEntryPrice, exitPrice);
+            values.add(values.get(entryIndex).multipliedBy(ratio));
         }
+    }
+
+    private Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {
+        Num ratio;
+        if (isLongTrade) {
+            ratio = exitPrice.dividedBy(entryPrice);
+        }
+        else {
+            ratio = entryPrice.numOf(2).minus(exitPrice.dividedBy(entryPrice));
+        }
+        return ratio;
+    }
+
+    private Num getEffectiveRatio(Num effectiveEntryPrice, int exitIndex) {
+        return (timeSeries.getBar(exitIndex).getClosePrice()).dividedBy(effectiveEntryPrice);
     }
 
     private Num getAdjustedRatio(int entryIndex, int exitIndex, Num avgCost) {
