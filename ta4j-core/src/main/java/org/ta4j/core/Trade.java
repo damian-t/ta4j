@@ -96,7 +96,7 @@ public class Trade implements Serializable {
      * @param exit the exit {@link Order order}
      */
     public Trade(Order entry, Order exit) {
-        this(entry, exit, new ZeroCostModel(), new ZeroCostModel());
+        this(entry, exit, entry.getCostModel(), new ZeroCostModel());
     }
 
     /**
@@ -111,6 +111,11 @@ public class Trade implements Serializable {
         if (entry.getType().equals(exit.getType())) {
             throw new IllegalArgumentException("Both orders must have different types");
         }
+
+        if (!(entry.getCostModel().equals(transactionCostModel)) || !(exit.getCostModel().equals(transactionCostModel))) {
+            throw new IllegalArgumentException("Orders and the trade must incorporate the same trading cost model");
+        }
+
         this.startingType = entry.getType();
         this.entry = entry;
         this.exit = exit;
@@ -263,8 +268,7 @@ public class Trade implements Serializable {
     }
 
     public Num getHoldingCost() {
-        // TODO: raise exception
-        assert isClosed();
+        if (isOpened()) { throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided."); }
         return getHoldingCost(exit.getIndex());
     }
 

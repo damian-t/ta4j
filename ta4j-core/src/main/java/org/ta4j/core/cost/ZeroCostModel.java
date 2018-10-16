@@ -19,4 +19,16 @@ public class ZeroCostModel implements CostModel {
     public Num calculate(Num price, Num amount) {
         return price.numOf(0);
     }
+
+    /**
+     * Evaluate if two models are equal
+     * @param otherModel model to compare with
+     */
+    public boolean equals(CostModel otherModel) {
+        boolean equality = false;
+        if (this.getClass().equals(otherModel.getClass())) {
+            equality = true;
+        }
+        return equality;
+    }
 }
