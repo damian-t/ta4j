@@ -160,7 +160,7 @@ public class CashFlow implements Indicator<Num> {
         }
     }
 
-    private Num addCost(Num rawPrice, Num holdingCost, boolean isLongTrade) {
+    private static Num addCost(Num rawPrice, Num holdingCost, boolean isLongTrade) {
         Num netPrice;
         if (isLongTrade) {
             netPrice = rawPrice.minus(holdingCost);
@@ -172,7 +172,7 @@ public class CashFlow implements Indicator<Num> {
 
     }
 
-    private Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {
+    private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {
         Num ratio;
         if (isLongTrade) {
             ratio = exitPrice.dividedBy(entryPrice);

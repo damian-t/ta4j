@@ -167,37 +167,102 @@ public class Returns implements Indicator<Num> {
 //        }
 //    }
 
+//    /**
+//     * Calculates the return time-series during a single trade.
+//     * @param trade a single trade
+//     */
+//    private void calculate(Trade trade) {
+//        final int entryIndex = trade.getEntry().getIndex();
+//        Num minusOne = timeSeries.numOf(-1);
+//        int begin = entryIndex + 1;
+//        if (begin > values.size()) {
+//            // fill returns since last trade with zeroes
+//            values.addAll(Collections.nCopies(begin - values.size(), timeSeries.numOf(0)));
+//        }
+//
+//        int end = (trade.getExit() != null) ? Math.min(trade.getExit().getIndex(), timeSeries.getEndIndex()) : timeSeries.getEndIndex();
+//        int nPeriods = end - entryIndex;
+//        Num totalCost = trade.calculateCost(end, timeSeries.getBar(end).getClosePrice());
+//        Num avgCost = totalCost.dividedBy(totalCost.numOf(nPeriods));
+//
+//        // spread trading costs equally over trade
+//        for (int i = Math.max(begin, 1); i <= end; i++) {
+//            // TODO; outsource cost per period to trade
+//            Num adjustedNewPrice = timeSeries.getBar(i).getClosePrice().minus(avgCost);
+//            Num assetReturn = type.calculate(adjustedNewPrice, timeSeries.getBar(i-1).getClosePrice());
+//            Num strategyReturn;
+//            if (trade.getEntry().isBuy()) {
+//                strategyReturn = assetReturn;
+//            } else {
+//                strategyReturn = assetReturn.multipliedBy(minusOne);
+//            }
+//            values.add(strategyReturn);
+//        }
+//    }
+
+    public void calculate(Trade trade) {
+        calculate(trade, timeSeries.getEndIndex());
+    }
+
+
     /**
-     * Calculates the return time-series during a single trade.
+     * Calculates the cash flow for a single trade (including accrued cashflow for open trades).
      * @param trade a single trade
+     * @param finalIndex index up until cash flow of open trades is considered
      */
-    private void calculate(Trade trade) {
-        final int entryIndex = trade.getEntry().getIndex();
+    public void calculate(Trade trade, int finalIndex) {
+        boolean isLongTrade = trade.getEntry().isBuy();
         Num minusOne = timeSeries.numOf(-1);
+        int endIndex = determineEndIndex(trade, finalIndex);
+        final int entryIndex = trade.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
-            // fill returns since last trade with zeroes
             values.addAll(Collections.nCopies(begin - values.size(), timeSeries.numOf(0)));
         }
 
-        int end = (trade.getExit() != null) ? Math.min(trade.getExit().getIndex(), timeSeries.getEndIndex()) : timeSeries.getEndIndex();
-        int nPeriods = end - entryIndex;
-        Num totalCost = trade.calculateCost(end, timeSeries.getBar(end).getClosePrice());
-        Num avgCost = totalCost.dividedBy(totalCost.numOf(nPeriods));
+        int startingIndex = Math.max(begin, 1);
 
-        // spread trading costs equally over trade
-        for (int i = Math.max(begin, 1); i <= end; i++) {
-            // TODO; outsource cost per period to trade
-            Num adjustedNewPrice = timeSeries.getBar(i).getClosePrice().minus(avgCost);
-            Num assetReturn = type.calculate(adjustedNewPrice, timeSeries.getBar(i-1).getClosePrice());
+        int nPeriods = endIndex - entryIndex;
+        Num holdingCost = trade.getHoldingCost(endIndex);
+        Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+
+        // returns are iterative. Need to keep track of the base price
+        Num lastPrice = trade.getEntry().getNetPrice();
+        for (int i = startingIndex; i < endIndex; i++) {
+            Num intermediateNetPrice = addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+            Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
+
             Num strategyReturn;
             if (trade.getEntry().isBuy()) {
                 strategyReturn = assetReturn;
             } else {
+                // TODO: this ignores the leverage I think
                 strategyReturn = assetReturn.multipliedBy(minusOne);
             }
             values.add(strategyReturn);
+            // update base price
+            lastPrice = timeSeries.getBar(i).getClosePrice();
         }
+
+        // add net return at exit trade
+        Num exitPrice;
+        if (trade.getExit() != null) {
+            exitPrice = trade.getExit().getNetPrice();
+        }
+        else {
+            exitPrice = timeSeries.getBar(endIndex).getClosePrice();
+        }
+
+        Num strategyReturn;
+        Num assetReturn = type.calculate(addCost(exitPrice, avgCost, isLongTrade), lastPrice);
+        if (trade.getEntry().isBuy()) {
+            strategyReturn = assetReturn;
+        } else {
+            // TODO: this ignores the leverage I think
+            strategyReturn = assetReturn.multipliedBy(minusOne);
+        }
+
+        values.add(strategyReturn);
     }
 
     /**
@@ -216,5 +281,28 @@ public class Returns implements Indicator<Num> {
         if (timeSeries.getEndIndex() >= values.size()) {
             values.addAll(Collections.nCopies(timeSeries.getEndIndex() - values.size() + 1, timeSeries.numOf(0)));
         }
+    }
+
+    private static Num addCost(Num rawPrice, Num holdingCost, boolean isLongTrade) {
+        Num netPrice;
+        if (isLongTrade) {
+            netPrice = rawPrice.minus(holdingCost);
+        } else {
+            netPrice = rawPrice.plus(holdingCost);
+        }
+        return netPrice;
+    }
+
+    private int determineEndIndex(Trade trade, int finalIndex) {
+        int idx = finalIndex;
+        // After closing of trade, no further accrual necessary
+        if (trade.getExit() != null) {
+            idx = Math.min(trade.getExit().getIndex(), finalIndex);
+        }
+        // Accrual at most until the end of asset data
+        if (idx > timeSeries.getEndIndex()) {
+            idx = timeSeries.getEndIndex();
+        }
+        return idx;
     }
 }
