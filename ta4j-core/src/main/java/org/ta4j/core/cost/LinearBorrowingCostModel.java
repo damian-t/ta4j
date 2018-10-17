@@ -25,6 +25,11 @@ public class LinearBorrowingCostModel implements CostModel {
         return price.numOf(0);
     }
 
+    public Num calculate(Trade trade) {
+        if (trade.isOpened()) { throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided."); }
+        return calculate(trade, trade.getExit().getIndex());
+    }
+
     /**
      * Calculates the borrowing cost of a closed trade.
      * @param trade the trade
