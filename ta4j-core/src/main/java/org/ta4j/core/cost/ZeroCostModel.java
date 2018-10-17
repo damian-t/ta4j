@@ -12,8 +12,12 @@ public class ZeroCostModel implements CostModel {
      */
     public ZeroCostModel() {}
 
+    public Num calculate(Trade trade) {
+        return calculate(trade, 0);
+    }
+
     public Num calculate(Trade trade, int currentIndex) {
-        return trade.getEntry().getPrice().numOf(0);
+        return trade.getEntry().getNetPrice().numOf(0);
     }
 
     public Num calculate(Num price, Num amount) {

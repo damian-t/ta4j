@@ -20,6 +20,10 @@ public class LinearTransactionCostModel implements CostModel {
         this.feePerTrade = feePerTrade;
     }
 
+    public Num calculate(Trade trade) {
+        return calculate(trade, 0);
+    }
+
     /**
      * Calculates the transaction cost of a trade.
      * @param trade the trade
@@ -27,7 +31,7 @@ public class LinearTransactionCostModel implements CostModel {
      * @return the absolute order cost
      */
     public Num calculate(Trade trade, int currentIndex) {
-        Num totalTradeCost = trade.getEntry().getPrice().numOf(0);
+        Num totalTradeCost = trade.getEntry().getNetPrice().numOf(0);
         Order entryOrder = trade.getEntry();
         if (entryOrder != null) {
             // transaction costs of entry order

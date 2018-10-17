@@ -143,7 +143,7 @@ public class BaseTradingRecord implements TradingRecord {
                 //    BUY, SELL
                 currentTrade = new Trade(o.getType(), transactionCostModel, holdingCostModel);
             }
-            Order newOrder = currentTrade.operate(o.getIndex(), o.getPrice(), o.getAmount());
+            Order newOrder = currentTrade.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }

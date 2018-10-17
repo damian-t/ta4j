@@ -209,7 +209,6 @@ public class Trade implements Serializable {
         return "Entry: " + entry + " exit: " + exit;
     }
 
-
     /**
      * Calculate the profit of the trade if it is closed
      * @return the profit or loss of the trade
@@ -217,21 +216,33 @@ public class Trade implements Serializable {
     public Num getProfit() {
         Num profit;
         if (isOpened()) {
-            profit = entry.getPrice().numOf(0);
+            profit = entry.getNetPrice().numOf(0);
         }
         else {
-            profit = getProfit(0, exit.getPrice());
+            profit = getProfit(exit.getNetPrice());
         }
         return profit;
     }
 
+    public Num getProfit(Num finalPrice) {
+        Num grossProfit = calculateGrossProfit(finalPrice);
+        // add trading costs
+        return grossProfit.minus(calculateCost());
+    }
+
     /**
-     * Calculate the profit of the trade. If it is open, calculates the profit until the chosen bar.
+     * Calculate the profit of the trade. If it is open, calculates the profit until the final bar.
      * @param finalIndex the index of the final bar to be considered (if trade is open)
      * @param finalPrice the price of the final bar to be considered (if trade is open)
      * @return the profit or loss of the trade
      */
     public Num getProfit(int finalIndex, Num finalPrice) {
+        Num grossProfit = calculateGrossProfit(finalPrice);
+        // add trading costs
+        return grossProfit.minus(calculateCost(finalIndex));
+    }
+
+    private Num calculateGrossProfit(Num finalPrice) {
         Num grossProfit;
         if (isOpened()) {
             grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
@@ -242,29 +253,26 @@ public class Trade implements Serializable {
 
         // Profits of long position are losses of short
         if (entry.getType().equals(OrderType.SELL)) {
-            grossProfit = grossProfit.multipliedBy(entry.getPrice().numOf(-1));
+            grossProfit = grossProfit.multipliedBy(entry.getNetPrice().numOf(-1));
         }
-        return grossProfit.minus(calculateCost(finalIndex, finalPrice));
+        return grossProfit;
     }
 
     /**
      * Calculates the total cost of a trade
      * @param finalIndex the index of the final bar to be considered (if trade is open)
-     * @param finalPrice the price of the final bar to be considered (if trade is open)
      * @return the cost of the trade
      */
-    public Num calculateCost(int finalIndex, Num finalPrice) {
+    public Num calculateCost(int finalIndex) {
         Num transactionCost = transactionCostModel.calculate(this, finalIndex);
-        Num borrowingCost = holdingCostModel.calculate(this, finalIndex);
+        Num borrowingCost = getHoldingCost(finalIndex);
         return transactionCost.plus(borrowingCost);
     }
 
-    public Num getNetEntryPrice() {
-        return entry.getNetPrice();
-    }
-
-    public Num getNetExitPrice() {
-        return exit.getNetPrice();
+    public Num calculateCost() {
+        Num transactionCost = transactionCostModel.calculate(this);
+        Num borrowingCost = getHoldingCost();
+        return transactionCost.plus(borrowingCost);
     }
 
     public Num getHoldingCost() {
