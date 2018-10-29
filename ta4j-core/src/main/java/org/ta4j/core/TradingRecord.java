@@ -151,4 +151,9 @@ public interface TradingRecord extends Serializable {
      * @return the last exit order recorded
      */
     Order getLastExit();
+
+    /**
+     *
+     */
+    TradingRecord extractReducedRecord(int startIndex, int endIndex, TimeSeries assetPrices);
 }

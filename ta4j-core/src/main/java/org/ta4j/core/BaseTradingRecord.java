@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Base implementation of a {@link TradingRecord}.
@@ -187,6 +188,8 @@ public class BaseTradingRecord implements TradingRecord {
         return trades;
     }
 
+    public List<Order> getOrders() { return orders; }
+
     @Override
     public Order getLastOrder() {
         if (!orders.isEmpty()) {
@@ -219,6 +222,34 @@ public class BaseTradingRecord implements TradingRecord {
             return exitOrders.get(exitOrders.size() - 1);
         }
         return null;
+    }
+
+    @Override
+    public TradingRecord extractReducedRecord(int startIndex, int endIndex, TimeSeries assetPrices) {
+        List<Order> reducedOrders = new ArrayList<>();
+        // TODO: Might not be true if there is not just in/out (space between thresholds)
+
+        List<Order> validOrders = orders.stream().filter(order -> order.getIndex() >= startIndex && order.getIndex() <= endIndex).collect(Collectors.toList());
+        List<Order> cutBeforeStart = orders.stream().filter(order -> order.getIndex() < startIndex).collect(Collectors.toList());
+
+        // CASE: Last cut-away order before period was entry order
+        if (!cutBeforeStart.isEmpty() && cutBeforeStart.get(cutBeforeStart.size()-1).getType().equals(startingType)) {
+            // CASE: exit order at start index will be removed
+            if (validOrders.get(0).getIndex() == startIndex) {
+                reducedOrders = validOrders.subList(1, validOrders.size());
+            }
+            // CASE: Add entry at startIndex
+            else {
+                Order newEntry = new Order(startIndex, assetPrices, startingType);
+                reducedOrders.add(newEntry);
+                reducedOrders.addAll(validOrders);
+            }
+        }
+        else {
+            reducedOrders = validOrders;
+        }
+
+        return new BaseTradingRecord(transactionCostModel, holdingCostModel, reducedOrders.stream().toArray(Order[]::new));
     }
 
     /**
