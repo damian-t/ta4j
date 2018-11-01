@@ -69,11 +69,11 @@ public class Trade implements Serializable {
 
     /**
      * Constructor.
+     * @param startingType the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
      */
     public Trade(OrderType startingType) {
         this(startingType, new ZeroCostModel(), new ZeroCostModel());
     }
-
 
     /**
      * Constructor.
@@ -219,15 +219,9 @@ public class Trade implements Serializable {
             profit = entry.getNetPrice().numOf(0);
         }
         else {
-            profit = getProfit(exit.getNetPrice());
+            profit = calculateGrossProfit(exit.getPricePerAsset()).minus(getTradeCost());
         }
         return profit;
-    }
-
-    public Num getProfit(Num finalPrice) {
-        Num grossProfit = calculateGrossProfit(finalPrice);
-        // add trading costs
-        return grossProfit.minus(calculateCost());
     }
 
     /**
@@ -239,9 +233,14 @@ public class Trade implements Serializable {
     public Num getProfit(int finalIndex, Num finalPrice) {
         Num grossProfit = calculateGrossProfit(finalPrice);
         // add trading costs
-        return grossProfit.minus(calculateCost(finalIndex));
+        return grossProfit.minus(getTradeCost(finalIndex));
     }
 
+    /**
+     * Calculate the gross (w/o trading costs) profit of the trade.
+     * @param finalPrice the price of the final bar to be considered (if trade is open)
+     * @return the profit or loss of the trade
+     */
     private Num calculateGrossProfit(Num finalPrice) {
         Num grossProfit;
         if (isOpened()) {
@@ -259,27 +258,39 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculates the total cost of a trade
+     * Calculates the total cost of the trade
      * @param finalIndex the index of the final bar to be considered (if trade is open)
      * @return the cost of the trade
      */
-    public Num calculateCost(int finalIndex) {
+    public Num getTradeCost(int finalIndex) {
         Num transactionCost = transactionCostModel.calculate(this, finalIndex);
         Num borrowingCost = getHoldingCost(finalIndex);
         return transactionCost.plus(borrowingCost);
     }
 
-    public Num calculateCost() {
+    /**
+     * Calculates the total cost of the closed trade
+     * @return the cost of the trade
+     */
+    public Num getTradeCost() {
         Num transactionCost = transactionCostModel.calculate(this);
         Num borrowingCost = getHoldingCost();
         return transactionCost.plus(borrowingCost);
     }
 
+    /**
+     * Calculates the holding cost of the closed trade
+     * @return the cost of the trade
+     */
     public Num getHoldingCost() {
-        if (isOpened()) { throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided."); }
-        return getHoldingCost(exit.getIndex());
+        return holdingCostModel.calculate(this);
     }
 
+    /**
+     * Calculates the holding cost of the trade
+     * @param finalIndex the index of the final bar to be considered (if trade is open)
+     * @return the cost of the trade
+     */
     public Num getHoldingCost(int finalIndex) {
         return holdingCostModel.calculate(this, finalIndex);
     }

@@ -7,7 +7,7 @@ import org.ta4j.core.num.Num;
 public class ZeroCostModel implements CostModel {
 
     /**
-     * Constructor for a trading cost free model.
+     * Constructor for a trading cost-free model.
      *
      */
     public ZeroCostModel() {}
@@ -17,7 +17,7 @@ public class ZeroCostModel implements CostModel {
     }
 
     public Num calculate(Trade trade, int currentIndex) {
-        return trade.getEntry().getNetPrice().numOf(0);
+        return trade.getEntry().getPricePerAsset().numOf(0);
     }
 
     public Num calculate(Num price, Num amount) {
