@@ -61,6 +61,52 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void returnsShortLeverageArithmetic() {
+        TimeSeries sampleTimeSeries = new MockTimeSeries(numFunction,10, 15, 5, 1, 1);
+        TradingRecord tradingRecord = new BaseTradingRecord(
+                Order.sellAt(0, sampleTimeSeries), Order.buyAt(4, sampleTimeSeries));
+
+        Returns strategyReturns = new Returns(sampleTimeSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
+
+        assertNumEquals(NaN.NaN, strategyReturns.getValue(0));
+        assertNumEquals(-0.5, strategyReturns.getValue(1));
+        assertNumEquals(2, strategyReturns.getValue(2));
+        assertNumEquals(4.0/15, strategyReturns.getValue(3));
+        assertNumEquals(0, strategyReturns.getValue(4));
+
+        Num one = numOf(1);
+        Num totalReturn = one.plus(strategyReturns.getValue(1)).multipliedBy(
+                one.plus(strategyReturns.getValue(2))).multipliedBy(
+                one.plus(strategyReturns.getValue(3))).multipliedBy(
+                one.plus(strategyReturns.getValue(4)));
+
+        assertNumEquals(2.0 - 1.0/10, totalReturn);
+    }
+
+    @Test
+    public void returnsShortLeverageLog() {
+        TimeSeries sampleTimeSeries = new MockTimeSeries(numFunction,10, 15, 5, 1, 1);
+        TradingRecord tradingRecord = new BaseTradingRecord(
+                Order.sellAt(0, sampleTimeSeries), Order.buyAt(4, sampleTimeSeries));
+
+        Returns strategyReturns = new Returns(sampleTimeSeries, tradingRecord, Returns.ReturnType.LOG);
+
+        assertNumEquals(NaN.NaN, strategyReturns.getValue(0));
+        assertNumEquals(-Math.log(15.0/10), strategyReturns.getValue(1));
+        assertNumEquals(-Math.log(5.0/15), strategyReturns.getValue(2));
+        assertNumEquals(-Math.log(1.0/5), strategyReturns.getValue(3));
+        assertNumEquals(0, strategyReturns.getValue(4));
+
+        Num one = numOf(1);
+        Num totalReturn = strategyReturns.getValue(1)
+                .plus(strategyReturns.getValue(2))
+                .plus(strategyReturns.getValue(3))
+                .plus(strategyReturns.getValue(4));
+
+        assertNumEquals(-Math.log(1.0/10), totalReturn);
+    }
+
+    @Test
     public void returnsWithGaps() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(numFunction,1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 11d, 12d);
         TradingRecord tradingRecord = new BaseTradingRecord(

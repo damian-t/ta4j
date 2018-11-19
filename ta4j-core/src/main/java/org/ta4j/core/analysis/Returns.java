@@ -73,6 +73,7 @@ public class Returns implements Indicator<Num> {
 
     /** Unit element for efficient arithmetic return computation */
     private static Num one;
+    private static Num minusOne;
 
 
     /**
@@ -82,6 +83,7 @@ public class Returns implements Indicator<Num> {
      */
     public Returns(TimeSeries timeSeries, Trade trade, ReturnType type) {
         one = timeSeries.numOf(1);
+        minusOne = timeSeries.numOf(-1);
         this.timeSeries = timeSeries;
         this.type = type;
         // at index 0, there is no return
@@ -98,6 +100,7 @@ public class Returns implements Indicator<Num> {
      */
     public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type) {
         one = timeSeries.numOf(1);
+        minusOne = timeSeries.numOf(-1);
         this.timeSeries = timeSeries;
         this.type = type;
         // at index 0, there is no return
@@ -146,7 +149,6 @@ public class Returns implements Indicator<Num> {
      */
     public void calculate(Trade trade, int finalIndex) {
         boolean isLongTrade = trade.getEntry().isBuy();
-        Num minusOne = timeSeries.numOf(-1);
         int endIndex = CashFlow.determineEndIndex(trade, finalIndex, timeSeries.getEndIndex());
         final int entryIndex = trade.getEntry().getIndex();
         int begin = entryIndex + 1;
@@ -161,15 +163,21 @@ public class Returns implements Indicator<Num> {
 
         // returns are per period (iterative). Base price needs to be updated accordingly
         Num lastPrice = trade.getEntry().getNetPrice();
+        Num previousReturnFactor = one;
         for (int i = startingIndex; i < endIndex; i++) {
             Num intermediateNetPrice = CashFlow.addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
-            Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 
             Num strategyReturn;
             if (trade.getEntry().isBuy()) {
-                strategyReturn = assetReturn;
+                strategyReturn = type.calculate(intermediateNetPrice, lastPrice);
             } else {
-                strategyReturn = assetReturn.multipliedBy(minusOne);
+                // include leverage ratio
+                Num tradeReturnFactor = updateReturnFactor(trade, intermediateNetPrice);
+                strategyReturn = calculateLeveragedReturn(intermediateNetPrice, lastPrice, tradeReturnFactor,
+                        previousReturnFactor);
+
+                // update return factor
+                previousReturnFactor = tradeReturnFactor;
             }
             values.add(strategyReturn);
             // update base price
@@ -186,13 +194,49 @@ public class Returns implements Indicator<Num> {
         }
 
         Num strategyReturn;
-        Num assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
+        Num netExitPrice = CashFlow.addCost(exitPrice, avgCost, isLongTrade);
         if (trade.getEntry().isBuy()) {
-            strategyReturn = assetReturn;
+            strategyReturn = type.calculate(netExitPrice, lastPrice);
         } else {
-            strategyReturn = assetReturn.multipliedBy(minusOne);
+            // include leverage ratio
+            Num tradeReturnFactor = updateReturnFactor(trade, netExitPrice);
+            strategyReturn = calculateLeveragedReturn(netExitPrice, lastPrice, tradeReturnFactor, previousReturnFactor);
         }
         values.add(strategyReturn);
+    }
+
+    private Num updateReturnFactor(Trade trade, Num intermediateNetPrice) {
+        // Return factor needed for the leverage ratio computation
+        Num currentTradeReturnFactor;
+        switch (type) {
+            case LOG:
+                currentTradeReturnFactor = intermediateNetPrice;
+                break;
+
+            case ARITHMETIC:
+                currentTradeReturnFactor = one.minus(type.calculate(intermediateNetPrice, trade.getEntry().getNetPrice()));
+                break;
+            default:
+                throw new IllegalArgumentException();
+        }
+        return currentTradeReturnFactor;
+    }
+
+    private Num calculateLeveragedReturn(Num intermediateNetPrice, Num lastPrice, Num currentReturnFactor, Num previousReturnFactor) {
+        // calculate leveraged return (applicable for arithmetic returns)
+        Num strategyReturn;
+        switch (type) {
+            case LOG:
+                strategyReturn = type.calculate(intermediateNetPrice, lastPrice).multipliedBy(minusOne);
+                break;
+
+            case ARITHMETIC:
+                strategyReturn = type.calculate(currentReturnFactor, previousReturnFactor);
+                break;
+            default:
+                throw new IllegalArgumentException();
+        }
+        return strategyReturn;
     }
 
     /**
