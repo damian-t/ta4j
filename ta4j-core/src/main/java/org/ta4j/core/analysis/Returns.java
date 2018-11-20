@@ -172,7 +172,7 @@ public class Returns implements Indicator<Num> {
                 strategyReturn = type.calculate(intermediateNetPrice, lastPrice);
             } else {
                 // include leverage ratio
-                Num tradeReturnFactor = updateReturnFactor(trade, intermediateNetPrice);
+                Num tradeReturnFactor = updateReturnFactor(trade.getEntry().getNetPrice(), intermediateNetPrice);
                 strategyReturn = calculateLeveragedReturn(intermediateNetPrice, lastPrice, tradeReturnFactor,
                         previousReturnFactor);
 
@@ -199,22 +199,27 @@ public class Returns implements Indicator<Num> {
             strategyReturn = type.calculate(netExitPrice, lastPrice);
         } else {
             // include leverage ratio
-            Num tradeReturnFactor = updateReturnFactor(trade, netExitPrice);
+            Num tradeReturnFactor = updateReturnFactor(trade.getEntry().getNetPrice(), netExitPrice);
             strategyReturn = calculateLeveragedReturn(netExitPrice, lastPrice, tradeReturnFactor, previousReturnFactor);
         }
         values.add(strategyReturn);
     }
 
-    private Num updateReturnFactor(Trade trade, Num intermediateNetPrice) {
+    /**
+     * Calculates the current return factor since the trade entry.
+     * @param entryPrice Price of trade entry
+     * @param currentPrice Current price of the asset
+     * @return current return factor
+     */
+    private Num updateReturnFactor(Num entryPrice, Num currentPrice) {
         // Return factor needed for the leverage ratio computation
-        Num currentTradeReturnFactor;
+        Num currentTradeReturnFactor = null;
         switch (type) {
             case LOG:
-                currentTradeReturnFactor = intermediateNetPrice;
+                // Logarithmic returns are additive. No adjustment necessary
                 break;
-
             case ARITHMETIC:
-                currentTradeReturnFactor = one.minus(type.calculate(intermediateNetPrice, trade.getEntry().getNetPrice()));
+                currentTradeReturnFactor = one.minus(type.calculate(currentPrice, entryPrice));
                 break;
             default:
                 throw new IllegalArgumentException();
@@ -222,21 +227,28 @@ public class Returns implements Indicator<Num> {
         return currentTradeReturnFactor;
     }
 
-    private Num calculateLeveragedReturn(Num intermediateNetPrice, Num lastPrice, Num currentReturnFactor, Num previousReturnFactor) {
-        // calculate leveraged return (applicable for arithmetic returns)
-        Num strategyReturn;
+    /**
+     * Calculates the return including leverage effects (at time t)
+     * @param currentPrice price at time t
+     * @param lastPrice price at time t-1
+     * @param currentReturnFactor return factor at time t
+     * @param previousReturnFactor  return factor at time t-1
+     * @return leveraged return
+     */
+    private Num calculateLeveragedReturn(Num currentPrice, Num lastPrice, Num currentReturnFactor, Num previousReturnFactor) {
+        Num leveragedReturn;
         switch (type) {
             case LOG:
-                strategyReturn = type.calculate(intermediateNetPrice, lastPrice).multipliedBy(minusOne);
+                // log returns are additive, leverage ratio is constant
+                leveragedReturn = type.calculate(currentPrice, lastPrice).multipliedBy(minusOne);
                 break;
-
             case ARITHMETIC:
-                strategyReturn = type.calculate(currentReturnFactor, previousReturnFactor);
+                leveragedReturn = type.calculate(currentReturnFactor, previousReturnFactor);
                 break;
             default:
                 throw new IllegalArgumentException();
         }
-        return strategyReturn;
+        return leveragedReturn;
     }
 
     /**
