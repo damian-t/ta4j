@@ -258,6 +258,11 @@ public class Returns implements Indicator<Num> {
     private void calculate(TradingRecord tradingRecord) {
         // For each trade...
         tradingRecord.getTrades().forEach(this::calculate);
+
+        // Add accrued cash flow of open trade
+        if (tradingRecord.getCurrentTrade().isOpened()) {
+            calculate(tradingRecord.getCurrentTrade(), timeSeries.getEndIndex());
+        }
     }
 
     /**
