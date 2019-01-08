@@ -235,7 +235,7 @@ public class BaseTradingRecord implements TradingRecord {
         // CASE: Last cut-away order before period was entry order
         if (!cutBeforeStart.isEmpty() && cutBeforeStart.get(cutBeforeStart.size()-1).getType().equals(startingType)) {
             // CASE: exit order at start index will be removed
-            if (validOrders.get(0).getIndex() == startIndex) {
+            if (!validOrders.isEmpty() && validOrders.get(0).getIndex() == startIndex) {
                 reducedOrders = validOrders.subList(1, validOrders.size());
             }
             // CASE: Add entry at startIndex
@@ -249,7 +249,14 @@ public class BaseTradingRecord implements TradingRecord {
             reducedOrders = validOrders;
         }
 
-        return new BaseTradingRecord(transactionCostModel, holdingCostModel, reducedOrders.stream().toArray(Order[]::new));
+        TradingRecord tradingRecord;
+        if (reducedOrders.isEmpty()) {
+            tradingRecord = new BaseTradingRecord(startingType, transactionCostModel, holdingCostModel);
+        }
+        else {
+            tradingRecord = new BaseTradingRecord(transactionCostModel, holdingCostModel, reducedOrders.stream().toArray(Order[]::new));
+        }
+        return tradingRecord;
     }
 
     /**

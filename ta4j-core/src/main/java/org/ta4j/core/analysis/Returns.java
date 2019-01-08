@@ -93,19 +93,31 @@ public class Returns implements Indicator<Num> {
         fillToTheEnd();
     }
 
+    /**any
+     * Constructor.
+     * @param timeSeries the time series
+     * @param tradingRecord the trading record
+     * @param type type of the return
+     */
+    public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type) {
+        this(timeSeries, tradingRecord, type, timeSeries.getEndIndex());
+    }
+
     /**
      * Constructor.
      * @param timeSeries the time series
      * @param tradingRecord the trading record
+     * @param type type of the return
+     * @param finalIndex index up until returns of open trades are considered
      */
-    public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type) {
+    public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type, int finalIndex) {
         one = timeSeries.numOf(1);
         minusOne = timeSeries.numOf(-1);
         this.timeSeries = timeSeries;
         this.type = type;
         // at index 0, there is no return
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
-        calculate(tradingRecord);
+        calculate(tradingRecord, finalIndex);
 
         fillToTheEnd();
     }
@@ -254,14 +266,15 @@ public class Returns implements Indicator<Num> {
     /**
      * Calculates the returns for a trading record.
      * @param tradingRecord the trading record
+     * @param finalIndex index up until returns of open trades are considered
      */
-    private void calculate(TradingRecord tradingRecord) {
+    private void calculate(TradingRecord tradingRecord, int finalIndex) {
         // For each trade...
         tradingRecord.getTrades().forEach(this::calculate);
 
         // Add accrued cash flow of open trade
         if (tradingRecord.getCurrentTrade().isOpened()) {
-            calculate(tradingRecord.getCurrentTrade(), timeSeries.getEndIndex());
+            calculate(tradingRecord.getCurrentTrade(), finalIndex);
         }
     }
 
